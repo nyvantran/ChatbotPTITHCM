@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot PTITHCM</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; display: flex; height: 100vh; background-color: #f0f2f5; }
+        #sidebar { width: 300px; background-color: #ffffff; border-right: 1px solid #ddd; display: flex; flex-direction: column; }
+        #sidebar-header { padding: 1rem; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        #new-chat-btn { padding: 0.5rem 1rem; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        #conversation-list { flex: 1; overflow-y: auto; }
+        .conversation-item { padding: 1rem; border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: background 0.2s; }
+        .conversation-item:hover { background-color: #f8f9fa; }
+        .conversation-item.active { background-color: #e9ecef; border-left: 4px solid #007bff; }
+        
+        #chat-container { flex: 1; display: flex; flex-direction: column; background-color: #fff; }
+        #chat-header { padding: 1rem; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background-color: #fff; }
+        #chat-messages { flex: 1; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; background-color: #f9f9f9; }
+        .message { max-width: 70%; padding: 0.8rem; border-radius: 8px; line-height: 1.4; word-wrap: break-word; }
+        .message.user { align-self: flex-end; background-color: #007bff; color: white; border-bottom-right-radius: 0; }
+        .message.ai { align-self: flex-start; background-color: #e4e6eb; color: #333; border-bottom-left-radius: 0; }
+        
+        #chat-input-area { padding: 1rem; border-top: 1px solid #eee; display: flex; gap: 0.5rem; background-color: #fff; }
+        #message-input { flex: 1; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; outline: none; }
+        #send-btn { padding: 0.75rem 1.5rem; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        #logout-btn { background: none; border: none; color: #dc3545; cursor: pointer; font-size: 0.9rem; }
+        
+        .loading { text-align: center; color: #888; padding: 1rem; }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <div id="sidebar-header">
+            <strong>Cuộc trò chuyện</strong>
+            <button id="new-chat-btn" onclick="createNewConversation()">+ Mới</button>
+        </div>
+        <div id="conversation-list">
+            <!-- Danh sách cuộc trò chuyện sẽ load ở đây -->
+        </div>
+        <div style="padding: 1rem; border-top: 1px solid #eee;">
+            <button id="logout-btn" onclick="handleLogout()">Đăng xuất</button>
+        </div>
+    </div>
+
+    <div id="chat-container">
+        <div id="chat-header">
+            <h3 id="current-chat-title">Chọn một cuộc trò chuyện</h3>
+            <span id="user-email" style="font-size: 0.8rem; color: #666;"></span>
+        </div>
+        <div id="chat-messages">
+            <!-- Tin nhắn sẽ load ở đây -->
+            <div class="loading">Hãy chọn hoặc tạo cuộc trò chuyện mới để bắt đầu</div>
+        </div>
+        <div id="chat-input-area">
+            <input type="text" id="message-input" placeholder="Nhập tin nhắn..." onkeypress="if(event.key==='Enter') sendMessage()">
+            <button id="send-btn" onclick="sendMessage()">Gửi</button>
+        </div>
+    </div>
+
+    <script>
+        let currentConversationId = null;
+        const token = localStorage.getItem('access_token');
+
+        if (!token) {
+            window.location.href = '/user';
+        }
+
+        async function fetchAPI(url, options = {}) {
+            const headers = {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                ...options.headers
+            };
+            const response = await fetch(url, { ...options, headers });
+            if (response.status === 401) {
+                localStorage.clear();
+                window.location.href = '/user';
+                return;
+            }
+            return response;
+        }
+
+        async function loadConversations() {
+            const response = await fetchAPI('/api/v1/chat/conversations');
+            if (!response) return;
+            const conversations = await response.json();
+            const list = document.getElementById('conversation-list');
+            list.innerHTML = '';
+            conversations.forEach(conv => {
+                const item = document.createElement('div');
+                item.className = `conversation-item ${conv._id === currentConversationId ? 'active' : ''}`;
+                item.textContent = conv.title || 'Cuộc trò chuyện không tên';
+                item.onclick = () => selectConversation(conv._id, conv.title);
+                list.appendChild(item);
+            });
+        }
+
+        async function createNewConversation() {
+            const title = prompt("Nhập tên cuộc trò chuyện:", "Cuộc trò chuyện mới");
+            if (!title) return;
+            
+            const response = await fetchAPI('/api/v1/chat/conversations', {
+                method: 'POST',
+                body: JSON.stringify({ title })
+            });
+            if (response && response.ok) {
+                const data = await response.json();
+                currentConversationId = data.id;
+                await loadConversations();
+                selectConversation(data.id, title);
+            }
+        }
+
+        async function selectConversation(id, title) {
+            currentConversationId = id;
+            document.getElementById('current-chat-title').textContent = title;
+            
+            // Cập nhật class active trong sidebar
+            document.querySelectorAll('.conversation-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.textContent === title) item.classList.add('active'); // Đơn giản hóa so sánh
+            });
+            await loadConversations(); // Reload để đảm bảo active đúng
+
+            const chatMessages = document.getElementById('chat-messages');
+            chatMessages.innerHTML = '<div class="loading">Đang tải tin nhắn...</div>';
+
+            const response = await fetchAPI(`/api/v1/chat/conversations/${id}`);
+            if (response && response.ok) {
+                const data = await response.json();
+                chatMessages.innerHTML = '';
+                data.history.forEach(msg => {
+                    appendMessage(msg.role === 'user' ? 'user' : 'ai', msg.content);
+                });
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('message-input');
+            const message = input.value.trim();
+            if (!message || !currentConversationId) return;
+
+            input.value = '';
+            appendMessage('user', message);
+            const chatMessages = document.getElementById('chat-messages');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            const response = await fetchAPI(`/api/v1/chat/conversations/${currentConversationId}`, {
+                method: 'POST',
+                body: JSON.stringify({ message })
+            });
+
+            if (response && response.ok) {
+                const data = await response.json();
+                appendMessage('ai', data.response);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        }
+
+        function appendMessage(role, content) {
+            const chatMessages = document.getElementById('chat-messages');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${role}`;
+            msgDiv.textContent = content;
+            chatMessages.appendChild(msgDiv);
+        }
+
+        async function handleLogout() {
+            await fetchAPI('/api/v1/auth/logout', { method: 'POST' });
+            localStorage.clear();
+            window.location.href = '/user';
+        }
+
+        // Khởi tạo
+        loadConversations();
+    </script>
+</body>
+</html>

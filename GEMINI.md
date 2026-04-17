@@ -3,7 +3,7 @@
 ## Tổng quan dự án
 
 Hệ thống Backend cung cấp API cho chatbot RAG. Mục tiêu là xây dựng một kiến trúc linh hoạt, cho phép thay đổi LLM
-Provider (OpenAI, Anthropic, Gemini) và Vector Database (ChromaDB, Pinecone, Weaviate) chỉ bằng cách thay đổi cấu hình.
+Provider (OpenAI, Anthropic, Gemini) và Vector Database (Mongodb, Pinecone) chỉ bằng cách thay đổi cấu hình.
 
 ## Tech Stack
 
@@ -13,6 +13,7 @@ Provider (OpenAI, Anthropic, Gemini) và Vector Database (ChromaDB, Pinecone, We
 - **Database:** Mongodb atlas
 - **Vector DB** Mongodb atlas
 - **Inference:** LangChain LCEL (LangChain Expression Language).
+- **Checkpoint:** SQLite
 
 ## VAI TRÒ CỦA BẠN (AI AGENT)
 
@@ -46,4 +47,92 @@ Khi tạo file mới, hãy tuân thủ sơ đồ:
 - **LCEL:** Ưu tiên sử dụng cú pháp `|` của LangChain để xây dựng pipeline nhằm tối ưu tính modular.
 - **API:** tuân thủ quy tắc restful api
 
+## Những API đã hoàn thành
 
+### 1. đăng ký tài khoản mới | post: /api/v1/auth/register  
+Request body
+```json 
+{
+  "email": "user@example.com",
+  "password": "stringst",
+  "confirm_password": "stringst"
+}
+```
+	
+Successful Response, code: 201
+```json
+{
+  "email": "user@example.com",
+  "id": "string",
+  "is_active": true
+}
+```
+### 2. đăng nhập tài khoản | post: /api/v1/auth/login
+ Request body
+```json 
+{
+  "email": "user@example.com",
+  "password": "string"
+}
+```
+	
+Successful Response, code: 200
+```json
+{
+  "access_token": "string",
+  "token_type": "string"
+}
+```
+### 3. post: /api/v1/auth/logout
+### 4. lấy danh sách các cuộc trò chuyện | get: /api/v1/chat/conversations	
+Successful Response, code: 200
+```json
+[
+  {
+    "additionalProp1": {}
+  }
+]
+```
+### 5. tạo cuộc trò chuyện mới | post: /api/v1/chat/conversations
+ Request body
+```json 
+{
+  "title": "New Conversation"
+}
+```
+	
+Successful Response, code: 200
+```json
+{
+  "additionalProp1": {}
+}
+```
+### 6. trò chuyện trong cuộc trò chuyện | post: /api/v1/chat/conversations/{conversation_id}
+ Request body
+```json 
+{
+  "message": "string"
+}
+```
+	
+Successful Response, code: 200
+```json
+{
+  "response": "string",
+  "conversation_id": "string",
+  "history": []
+}
+```
+### 7. lấy lịch sử cuộc trò chuyện | get: /api/v1/chat/conversations/{conversation_id}
+
+Successful Response, code: 200
+```json
+{
+  "history": [
+    {
+      "content": "string",
+      "role": "string"
+    }
+  ]
+}
+```

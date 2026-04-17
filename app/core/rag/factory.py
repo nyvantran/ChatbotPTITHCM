@@ -18,10 +18,12 @@ class LLMFactory:
                 temperature=0.7
             )
         elif provider == "openai":
+            if os.environ.get("OPENAI_API_KEY") is None:
+                os.environ["OPENAI_API_KEY"] = settings.OPENAI_API_KEY
             return ChatOpenAI(
-                model="gpt-4o-mini",
-                api_key=settings.OPENAI_API_KEY,
-                temperature=0.7
+                model=settings.DEFAULT_LLM,
+                temperature=0.7,
+                api_key=settings.OPENAI_API_KEY
             )
         else:
             raise ValueError(f"Unsupported LLM provider: {provider}")
@@ -29,18 +31,21 @@ class LLMFactory:
     @staticmethod
     def get_embeddings(provider: str = settings.DEFAULT_LLM_PROVIDER) -> Embeddings:
         if provider == "google":
+            if os.environ.get("GOOGLE_API_KEY") is None:
+                os.environ["GOOGLE_API_KEY"] = settings.GOOGLE_API_KEY
             return GoogleGenerativeAIEmbeddings(
                 model=settings.EMBEDDING_MODEL,
-                google_api_key=settings.GOOGLE_API_KEY
             )
         elif provider == "openai":
+            if os.environ.get("OPENAI_API_KEY") is None:
+                os.environ["OPENAI_API_KEY"] = settings.OPENAI_API_KEY
             return OpenAIEmbeddings(
-                model="text-embedding-3-small",
+                model=settings.EMBEDDING_MODEL,
                 api_key=settings.OPENAI_API_KEY
             )
         elif provider == "huggingface":
             return HuggingFaceEmbeddings(
-                model_name="keepitreal/vietnamese-sbert"
+                model_name=settings.EMBEDDING_MODEL
             )
         else:
             raise ValueError(f"Unsupported Embedding provider: {provider}")

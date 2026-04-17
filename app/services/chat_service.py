@@ -32,20 +32,22 @@ class ChatService:
             }
         elif isinstance(message, AIMessage):
             if message.content == "":
-                return {
-                    "role": "assistant",
-                    "content": message.additional_kwargs,
-                }
+                # return {
+                #     "role": "assistant",
+                #     # "content": message.additional_kwargs,
+                #     "content": "",
+                # }
+                return None
             elif message.content != "":
                 return {
                     "role": "assistant",
                     "content": message.content,
                 }
-        elif isinstance(message, ToolMessage):
-            return {
-                "role": "tools",
-                "content": message.content,
-            }
+        # elif isinstance(message, ToolMessage):
+        #     return {
+        #         "role": "tools",
+        #         "content":"",
+        #     }
         return None
 
     async def create_conversation(self, user_id: str, data: ConversationCreate) -> str:
@@ -83,9 +85,11 @@ class ChatService:
             conv["id"] = str(conv["_id"])
         history = []
         if get_his:
-            history_data = self.checkpoint.get(config=configure)["channel_values"]["messages"]
-            history = [self.format_message(his) for his in history_data]
-
+            history_data = self.checkpoint.get(config=configure)
+            if history_data is None:
+                return conv, []
+            history = [self.format_message(his) for his in history_data["channel_values"]["messages"]]
+            history = filter(lambda x: x is not None, history)
         return conv, history
 
     async def update_conversation_timestamp(self, conversation_id: str):
