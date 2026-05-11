@@ -39,6 +39,11 @@ class ChatService:
                 # }
                 return None
             elif message.content != "":
+                if isinstance(message.content, list):
+                    return {
+                        "role": "assistant",
+                        "content": message.content[0]['text'] if len(message.content) > 0 else "",
+                    }
                 return {
                     "role": "assistant",
                     "content": message.content,
